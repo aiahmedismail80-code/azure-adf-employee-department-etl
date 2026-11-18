@@ -1,0 +1,490 @@
+{
+    "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "factoryName": {
+            "type": "string",
+            "metadata": "Data Factory name",
+            "defaultValue": "adf-project03-ahmed"
+        },
+        "LS_AzureBlobStorage_connectionString": {
+            "type": "secureString",
+            "metadata": "Secure string for 'connectionString' of 'LS_AzureBlobStorage'"
+        }
+    },
+    "variables": {
+        "factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('factoryName'), '/PL_Employee_Departmen')]",
+            "type": "Microsoft.DataFactory/factories/pipelines",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "activities": [
+                    {
+                        "name": "Copy_Employee",
+                        "type": "Copy",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "JsonSource",
+                                "storeSettings": {
+                                    "type": "AzureBlobStorageReadSettings",
+                                    "recursive": true,
+                                    "enablePartitionDiscovery": false
+                                },
+                                "formatSettings": {
+                                    "type": "JsonReadSettings"
+                                }
+                            },
+                            "sink": {
+                                "type": "JsonSink",
+                                "storeSettings": {
+                                    "type": "AzureBlobStorageWriteSettings"
+                                },
+                                "formatSettings": {
+                                    "type": "JsonWriteSettings"
+                                }
+                            },
+                            "enableStaging": false
+                        },
+                        "inputs": [
+                            {
+                                "referenceName": "DS_Employee_JSON",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "referenceName": "DS_Employee_Output",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ]
+                    },
+                    {
+                        "name": "Copy_Department",
+                        "type": "Copy",
+                        "dependsOn": [],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "source": {
+                                "type": "JsonSource",
+                                "storeSettings": {
+                                    "type": "AzureBlobStorageReadSettings",
+                                    "recursive": true,
+                                    "enablePartitionDiscovery": false
+                                },
+                                "formatSettings": {
+                                    "type": "JsonReadSettings"
+                                }
+                            },
+                            "sink": {
+                                "type": "JsonSink",
+                                "storeSettings": {
+                                    "type": "AzureBlobStorageWriteSettings"
+                                },
+                                "formatSettings": {
+                                    "type": "JsonWriteSettings"
+                                }
+                            },
+                            "enableStaging": false
+                        },
+                        "inputs": [
+                            {
+                                "referenceName": "DS_Department_JSON",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ],
+                        "outputs": [
+                            {
+                                "referenceName": "DS_Department_Output",
+                                "type": "DatasetReference",
+                                "parameters": {}
+                            }
+                        ]
+                    },
+                    {
+                        "name": "DF_Transform_Employee_Department",
+                        "type": "ExecuteDataFlow",
+                        "dependsOn": [
+                            {
+                                "activity": "Copy_Employee",
+                                "dependencyConditions": [
+                                    "Completed"
+                                ]
+                            },
+                            {
+                                "activity": "Copy_Department",
+                                "dependencyConditions": [
+                                    "Completed"
+                                ]
+                            }
+                        ],
+                        "policy": {
+                            "timeout": "0.12:00:00",
+                            "retry": 0,
+                            "retryIntervalInSeconds": 30,
+                            "secureOutput": false,
+                            "secureInput": false
+                        },
+                        "userProperties": [],
+                        "typeProperties": {
+                            "dataflow": {
+                                "referenceName": "DF_Employee_Department",
+                                "type": "DataFlowReference",
+                                "parameters": {},
+                                "datasetParameters": {
+                                    "EmployeeSource": {},
+                                    "DepartmentSource": {},
+                                    "SinkDepartmentSummary": {}
+                                }
+                            },
+                            "staging": {},
+                            "compute": {
+                                "coreCount": 8,
+                                "computeType": "General"
+                            },
+                            "traceLevel": "Fine"
+                        }
+                    }
+                ],
+                "policy": {
+                    "elapsedTimeMetric": {}
+                },
+                "annotations": [],
+                "lastPublishTime": "2026-11-16T16:22:18Z"
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/DS_Employee_JSON')]",
+                "[concat(variables('factoryId'), '/datasets/DS_Employee_Output')]",
+                "[concat(variables('factoryId'), '/datasets/DS_Department_JSON')]",
+                "[concat(variables('factoryId'), '/datasets/DS_Department_Output')]",
+                "[concat(variables('factoryId'), '/dataflows/DF_Employee_Department')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_Employee_Output')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_AzureBlobStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "Json",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "fileName": "employee_copy.json",
+                        "container": "processed"
+                    }
+                },
+                "schema": {}
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AzureBlobStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_Department_JSON')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_AzureBlobStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "Json",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "fileName": "department.json",
+                        "container": "raw"
+                    }
+                },
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "DEPARTMENT_ID": {
+                            "type": "integer"
+                        },
+                        "DEPARTMENT_NAME": {
+                            "type": "string"
+                        },
+                        "MANAGER_ID": {
+                            "type": "integer"
+                        },
+                        "LOCATION_ID": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AzureBlobStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_Department_Output')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_AzureBlobStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "Json",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "fileName": "department_copy.json",
+                        "container": "processed"
+                    }
+                },
+                "schema": {}
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AzureBlobStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_Employee_JSON')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "description": "\n",
+                "linkedServiceName": {
+                    "referenceName": "LS_AzureBlobStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "Json",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "fileName": "employee.json",
+                        "container": "raw"
+                    }
+                },
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "EMPLOYEE_ID": {
+                            "type": "integer"
+                        },
+                        "FIRST_NAME": {
+                            "type": "string"
+                        },
+                        "LAST_NAME": {
+                            "type": "string"
+                        },
+                        "EMAIL": {
+                            "type": "string"
+                        },
+                        "PHONE_NUMBER": {
+                            "type": "string"
+                        },
+                        "HIRE_DATE": {
+                            "type": "string"
+                        },
+                        "JOB_ID": {
+                            "type": "string"
+                        },
+                        "SALARY": {
+                            "type": "integer"
+                        },
+                        "COMMISSION_PCT": {
+                            "type": "integer"
+                        },
+                        "MANAGER_ID": {
+                            "type": "integer"
+                        },
+                        "DEPARTMENT_ID": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AzureBlobStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DS_Department_Summary')]",
+            "type": "Microsoft.DataFactory/factories/datasets",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "linkedServiceName": {
+                    "referenceName": "LS_AzureBlobStorage",
+                    "type": "LinkedServiceReference"
+                },
+                "annotations": [],
+                "type": "DelimitedText",
+                "typeProperties": {
+                    "location": {
+                        "type": "AzureBlobStorageLocation",
+                        "folderPath": "department_summary",
+                        "container": "processed"
+                    },
+                    "columnDelimiter": ",",
+                    "escapeChar": "\\",
+                    "firstRowAsHeader": true,
+                    "quoteChar": "\""
+                },
+                "schema": []
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/linkedServices/LS_AzureBlobStorage')]"
+            ]
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/LS_AzureBlobStorage')]",
+            "type": "Microsoft.DataFactory/factories/linkedServices",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "annotations": [],
+                "type": "AzureBlobStorage",
+                "typeProperties": {
+                    "connectionString": "[parameters('LS_AzureBlobStorage_connectionString')]"
+                }
+            },
+            "dependsOn": []
+        },
+        {
+            "name": "[concat(parameters('factoryName'), '/DF_Employee_Department')]",
+            "type": "Microsoft.DataFactory/factories/dataflows",
+            "apiVersion": "2018-06-01",
+            "properties": {
+                "type": "MappingDataFlow",
+                "typeProperties": {
+                    "sources": [
+                        {
+                            "dataset": {
+                                "referenceName": "DS_Employee_JSON",
+                                "type": "DatasetReference"
+                            },
+                            "name": "EmployeeSource"
+                        },
+                        {
+                            "dataset": {
+                                "referenceName": "DS_Department_JSON",
+                                "type": "DatasetReference"
+                            },
+                            "name": "DepartmentSource"
+                        }
+                    ],
+                    "sinks": [
+                        {
+                            "dataset": {
+                                "referenceName": "DS_Department_Summary",
+                                "type": "DatasetReference"
+                            },
+                            "name": "SinkDepartmentSummary"
+                        }
+                    ],
+                    "transformations": [
+                        {
+                            "name": "JoinEmployeeDepartment"
+                        },
+                        {
+                            "name": "SelectEmployeeDepartment"
+                        },
+                        {
+                            "name": "AggregateDepartment"
+                        }
+                    ],
+                    "scriptLines": [
+                        "source(output(",
+                        "          EMPLOYEE_ID as integer,",
+                        "          FIRST_NAME as string,",
+                        "          LAST_NAME as string,",
+                        "          EMAIL as string,",
+                        "          PHONE_NUMBER as string,",
+                        "          HIRE_DATE as string,",
+                        "          JOB_ID as string,",
+                        "          SALARY as integer,",
+                        "          COMMISSION_PCT as integer,",
+                        "          MANAGER_ID as integer,",
+                        "          DEPARTMENT_ID as integer",
+                        "     ),",
+                        "     allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     ignoreNoFilesFound: false,",
+                        "     documentForm: 'arrayOfDocuments') ~> EmployeeSource",
+                        "source(output(",
+                        "          DEPARTMENT_ID as integer,",
+                        "          DEPARTMENT_NAME as string,",
+                        "          MANAGER_ID as integer,",
+                        "          LOCATION_ID as integer",
+                        "     ),",
+                        "     allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     ignoreNoFilesFound: false,",
+                        "     documentForm: 'arrayOfDocuments') ~> DepartmentSource",
+                        "EmployeeSource, DepartmentSource join(EmployeeSource@DEPARTMENT_ID == DepartmentSource@DEPARTMENT_ID,",
+                        "     joinType:'inner',",
+                        "     matchType:'exact',",
+                        "     ignoreSpaces: false,",
+                        "     broadcast: 'auto')~> JoinEmployeeDepartment",
+                        "JoinEmployeeDepartment select(mapColumn(",
+                        "          EMPLOYEE_ID,",
+                        "          FIRST_NAME,",
+                        "          LAST_NAME,",
+                        "          EMAIL,",
+                        "          PHONE_NUMBER,",
+                        "          HIRE_DATE,",
+                        "          JOB_ID,",
+                        "          SALARY,",
+                        "          COMMISSION_PCT,",
+                        "          MANAGER_ID = EmployeeSource@MANAGER_ID,",
+                        "          DEPARTMENT_ID = EmployeeSource@DEPARTMENT_ID,",
+                        "          DEPARTMENT_ID = DepartmentSource@DEPARTMENT_ID,",
+                        "          DEPARTMENT_NAME,",
+                        "          MANAGER_ID = DepartmentSource@MANAGER_ID,",
+                        "          LOCATION_ID",
+                        "     ),",
+                        "     skipDuplicateMapInputs: true,",
+                        "     skipDuplicateMapOutputs: true) ~> SelectEmployeeDepartment",
+                        "SelectEmployeeDepartment aggregate(groupBy(DEPARTMENT_NAME),",
+                        "     EmployeeCount = count(EMPLOYEE_ID),",
+                        "          TotalSalary = sum(toDecimal(SALARY)),",
+                        "          AverageSalary = avg(toDecimal(SALARY))) ~> AggregateDepartment",
+                        "AggregateDepartment sink(allowSchemaDrift: true,",
+                        "     validateSchema: false,",
+                        "     partitionFileNames:['department_summary.csv'],",
+                        "     skipDuplicateMapInputs: true,",
+                        "     skipDuplicateMapOutputs: true,",
+                        "     partitionBy('hash', 1)) ~> SinkDepartmentSummary"
+                    ]
+                }
+            },
+            "dependsOn": [
+                "[concat(variables('factoryId'), '/datasets/DS_Employee_JSON')]",
+                "[concat(variables('factoryId'), '/datasets/DS_Department_JSON')]",
+                "[concat(variables('factoryId'), '/datasets/DS_Department_Summary')]"
+            ]
+        }
+    ]
+}
